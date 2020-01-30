@@ -1,4 +1,5 @@
 import math
+import numpy as np
 import torch
 import torch.nn as nn
 from model_utils import *
@@ -11,8 +12,8 @@ class CDCorefScorer(nn.Module):
     An abstract class represents a coreference pairwise scorer.
     Inherits Pytorch's Module class.
     '''
-    def __init__(self, word_embeds, word_to_ix,vocab_size, char_embedding, char_to_ix, char_rep_size
-                 , dims, use_mult, use_diff, feature_size):
+    def __init__(self, word_embeds, word_to_ix,vocab_size, char_embedding, char_to_ix, char_rep_size,
+                 dims, use_mult, use_diff, feature_size, coreferability_type):
         '''
         C'tor for CorefScorer object
         :param word_embeds: pre-trained word embeddings
@@ -49,7 +50,9 @@ class CDCorefScorer(nn.Module):
         self.char_lstm = nn.LSTM(input_size=char_embedding.shape[1],hidden_size= self.char_hidden_dim,num_layers=1,
                                  bidirectional=False)
 
-        # binary features for coreferring arguments/predicates
+        self.coreferability_type = coreferability_type
+
+        #  binary features for coreferring arguments/predicates
         self.coref_role_embeds = nn.Embedding(2,feature_size)
 
         self.use_mult = use_mult
@@ -63,6 +66,14 @@ class CDCorefScorer(nn.Module):
         self.hidden_layer_2 = nn.Linear(self.hidden_dim_1, self.hidden_dim_2)
         self.out_layer = nn.Linear(self.hidden_dim_2, self.out_dim)
 
+        if self.coreferability_type == 'linear':
+            self.coref_input_dim = dims[3]
+            self.coref_second_dim = dims[4]
+            self.coref_third_dim = dims[5]
+            self.hidden_layer_coref_1 = nn.Linear(self.coref_input_dim, self.coref_second_dim)
+            self.hidden_layer_coref_2 = nn.Linear(self.coref_second_dim, self.coref_third_dim)
+            self.dropout_coref = nn.Dropout(p=0.2)
+
         self.model_type = 'CD_scorer'
 
     def forward(self, clusters_pair_tensor):
@@ -74,7 +85,19 @@ class CDCorefScorer(nn.Module):
         :return: a predicted confidence score (between 0 to 1) of the mention pair to be in the
         same coreference chain (aka cluster).
         '''
-        first_hidden = F.relu(self.hidden_layer_1(clusters_pair_tensor))
+        if self.coreferability_type == 'linear':
+            coref_features = clusters_pair_tensor[:, :17]
+            coref_first_hidden = F.relu(self.hidden_layer_coref_1(coref_features))
+            coref_second_hidden = F.relu(self.hidden_layer_coref_2(coref_first_hidden))
+            coref_dropout = self.dropout_coref(coref_second_hidden)
+
+            clusters_tensor = torch.cat([clusters_pair_tensor[:, 17:], coref_dropout], dim=1)
+
+        else:
+            clusters_tensor = clusters_pair_tensor
+
+        first_hidden = F.relu(self.hidden_layer_1(clusters_tensor))
+        #first_hidden = F.relu(self.hidden_layer_1(clusters_pair_tensor))
         second_hidden = F.relu(self.hidden_layer_2(first_hidden))
         out = F.sigmoid(self.out_layer(second_hidden))
 

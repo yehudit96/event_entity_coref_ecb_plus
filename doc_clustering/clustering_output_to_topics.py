@@ -9,7 +9,8 @@ parser.add_argument('--input_dir', type=str,
                         help=' The directory of the input files')
 parser.add_argument('--out_dir', type=str,
                         help=' The directory of the output files')
-
+parser.add_argument('--split', type=str,
+                        help=' The split that will be stored - train|dev|test')
 
 args = parser.parse_args()
 
@@ -32,7 +33,7 @@ def load_clusters():
                 doc_names_list.append(doc_name)
         topics.append(doc_names_list)
 
-    with open(os.path.join(args.out_dir, 'predicted_topics'), 'wb') as f:
+    with open(os.path.join(args.out_dir, '{}_predicted_topics'.format(args.split)), 'wb') as f:
         cPickle.dump(topics, f)
 
 

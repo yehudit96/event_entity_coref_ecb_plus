@@ -35,7 +35,7 @@ def filter_docs(docs):
     filtered_docs = {}
 
     for doc_id, doc in docs.iteritems():
-        parsed = nlp(unicode(doc))
+        parsed = nlp(doc)
         filtered_tokens = [tok.text for tok in parsed if tok.ent_iob_ != 'O']
         if len(filtered_tokens) < 3:
             filtered_doc = doc

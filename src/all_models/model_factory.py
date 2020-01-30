@@ -4,6 +4,10 @@ import torch.nn as nn
 import torch.optim as optim
 import logging
 
+import sys
+sys.path.append('src/shared')
+
+from coreferability import get_corefferabiliy_dim
 
 word_embeds = None
 word_to_ix = None
@@ -29,7 +33,7 @@ def factory_load_embeddings(config_dict):
     word_embeds, word_to_ix, char_embeds, char_to_ix = load_model_embeddings(config_dict)
 
 
-def create_model(config_dict):
+def create_model(config_dict, is_event):
     '''
     Given a configuration dictionary, containing flags for configuring the current experiment,
     this function creates a model according to those flags and returns that model.
@@ -50,10 +54,26 @@ def create_model(config_dict):
 
     if config_dict["use_binary_feats"]:
         input_dim += 4 * config_dict["feature_size"]
-
+    
+    if config_dict["coreferability"] != 'None' and (is_event or (not is_event and config_dict['entity_coref'])):
+        input_dim = input_dim + get_corefferabiliy_dim(config_dict["coreferability"]) # for the rule score feature
+    print("input dim {}".format(input_dim))
     second_dim = int(input_dim / 2)
     third_dim = second_dim
-    model_dims = [input_dim, second_dim, third_dim]
+
+    if config_dict["coreferability"] == 'linear' and (is_event or (not is_event and config_dict['entity_coref'])):
+        coref_input_dim = 17
+        coref_second_dim = 50
+        coref_third_dim = 100
+
+        model_dims = [input_dim, second_dim, third_dim, coref_input_dim, coref_second_dim, coref_third_dim]
+
+    else:
+        model_dims = [input_dim, second_dim, third_dim]
+
+    coreferability_type = config_dict["coreferability"]\
+        if is_event or (not is_event and config_dict['entity_coref']) \
+        else 'None'
 
     model = CDCorefScorer(word_embeds, word_to_ix, word_embeds.shape[0],
                           char_embedding=char_embeds, char_to_ix=char_to_ix,
@@ -61,7 +81,8 @@ def create_model(config_dict):
                           dims=model_dims,
                           use_mult=config_dict["use_mult"],
                           use_diff=config_dict["use_diff"],
-                          feature_size=config_dict["feature_size"])
+                          feature_size=config_dict["feature_size"],
+                          coreferability_type=coreferability_type)
 
     return model
 

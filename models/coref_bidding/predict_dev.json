@@ -1,0 +1,23 @@
+{
+    "cd_entity_model_path": "models/train_feature_vector_b/cd_entity_best_model",
+    "cd_event_model_path": "models/train_feature_vector_b/cd_event_best_model",
+    "coreferability": "linear",
+    "entity_coref": true,
+    "entity_gold_file_path": "data/gold/cybulska_gold/dev/CD_test_entity_mention_based.key_conll",
+    "entity_merge_threshold": 0.5,
+    "event_gold_file_path": "data/gold/cybulska_gold/dev/CD_test_event_mention_based.key_conll",
+    "event_merge_threshold": 0.5,
+    "gpu_num": 3,
+    "load_predicted_topics": false,
+    "merge_iters": 2,
+    "predicted_topics_path": "data/external/document_clustering/predicted_topics",
+    "random_seed": 2048,
+    "run_conell_scorer": true,
+    "seed": 1,
+    "test_path": "data/processed/cybulska_setup/full_swirl_ecb/dev_data",
+    "test_use_gold_mentions": true,
+    "use_args_feats": true,
+    "use_binary_feats": true,
+    "use_elmo": true,
+    "wd_entity_coref_file": "data/external/stanford_neural_wd_entity_coref_out/ecb_wd_coref.json"
+}

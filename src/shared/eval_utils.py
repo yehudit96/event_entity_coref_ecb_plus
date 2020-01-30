@@ -137,7 +137,8 @@ def write_clusters_to_file(clusters, file_obj,topic):
         file_obj.write('cluster #' + str(i) + '\n')
         mentions_list = []
         for mention in cluster.mentions.values():
-            mentions_list.append('{}_{}'.format(mention.mention_str,mention.gold_tag))
+            mentions_list.append('{}_({}-{}_{}){}'.format(mention.mention_str, mention.doc_id, mention.sent_id, mention.tokens_numbers[0], mention.gold_tag))
+            print('---------------------------------------------{}-----------------------'.format(mentions_list[-1]))
         file_obj.write(str(mentions_list) + '\n\n')
 
 

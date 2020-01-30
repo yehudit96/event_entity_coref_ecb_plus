@@ -10,10 +10,16 @@ parser = argparse.ArgumentParser(description='Parsing ECB+ corpus')
 parser.add_argument('--ecb_path', type=str,
                     help=' The path to the ECB+ corpus')
 parser.add_argument('--output_dir', type=str,
-                        help=' The directory of the output files')
+                    help=' The directory of the output files')
+parser.add_argument('--split', type=str,
+                    help=' The split that should be loaded - train|dev|test')
+
 
 args = parser.parse_args()
 
+VALIDATION = [2, 5, 12, 18, 21, 23, 34, 35]
+TRAIN = [i for i in range(1, 36) if i not in VALIDATION]
+TEST = [i for i in range(36, 46)]
 
 class Token(object):
     def __init__(self, text, sent_id, tok_id, rel_id=None):
@@ -46,11 +52,19 @@ def load_ecb_plus_raw_doc(doc_filename, doc_id):
 
 
 def load_raw_test_data():
-    test_topics = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45]
+    if 'dev' == args.split:
+        test_topics = VALIDATION
+    elif 'train' in args.split:
+        test_topics = TRAIN
+    else:
+        test_topics = TEST
     dirs = os.listdir(args.ecb_path)
     docs = {}
 
     for dir in dirs:
+        dir_path = os.path.join(args.ecb_path, dir)
+        if os.path.isfile(dir_path):
+            continue
         doc_files = os.listdir(os.path.join(args.ecb_path, dir))
         for doc_file in doc_files:
             doc_id = doc_file.replace('.xml', '')
@@ -64,7 +78,7 @@ def load_raw_test_data():
 
 def main():
     test_docs = load_raw_test_data()
-    with open(os.path.join(args.output_dir, 'test_raw_docs'), 'wb') as f:
+    with open(os.path.join(args.output_dir, '{}_raw_docs'.format(args.split)), 'wb') as f:
         cPickle.dump(test_docs, f)
 
 

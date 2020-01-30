@@ -89,8 +89,8 @@ def train_model(train_set, dev_set):
     print('Create new models...')
     logging.info('Create new models...')
     factory_load_embeddings(config_dict)  # loading pre-trained embeddings before creating new models
-    cd_event_model = create_model(config_dict)
-    cd_entity_model = create_model(config_dict)
+    cd_event_model = create_model(config_dict, True)
+    cd_entity_model = create_model(config_dict, False)
 
     cd_event_model = cd_event_model.to(device)
     cd_entity_model = cd_entity_model.to(device)
@@ -305,13 +305,17 @@ def train_and_merge(clusters, other_clusters, model, optimizer,
         # Merge clusters till reaching the threshold
         merge(clusters, cluster_pairs, other_clusters, model, device, topic.docs, epoch,
               topics_counter, topics_num, threshold, is_event,
-              config_dict["use_args_feats"], config_dict["use_binary_feats"])
+              config_dict["use_args_feats"],
+              config_dict["use_binary_feats"],
+              config_dict["coreferability"],
+              config_dict["entity_coref"],
+              config_dict["joint_model"])
 
 
 def save_epoch_f1(event_f1, entity_f1, epoch,  best_event_th, best_entity_th):
     '''
     Write to a text file B-cubed F1 measures of both event and entity clustering
-    according to the models' predictions on the dev set after each training epoch.
+    according to the models' predictions on the dev set after each training ep  och.
     :param event_f1: B-cubed F1 measure for event coreference
     :param entity_f1: B-cubed F1 measure for entity coreference
     :param epoch: current epoch number
