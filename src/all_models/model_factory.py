@@ -56,7 +56,7 @@ def create_model(config_dict, is_event):
         input_dim += 4 * config_dict["feature_size"]
     
     if config_dict["coreferability"] != 'None' and (is_event or (not is_event and config_dict['entity_coref'])):
-        input_dim = input_dim + get_corefferabiliy_dim(config_dict["coreferability"]) # for the rule score feature
+        input_dim = input_dim + config_dict["attention_hidden_size"]#get_corefferabiliy_dim(config_dict["coreferability"])  # for the rule score feature
     print("input dim {}".format(input_dim))
     second_dim = int(input_dim / 2)
     third_dim = second_dim
@@ -82,7 +82,8 @@ def create_model(config_dict, is_event):
                           use_mult=config_dict["use_mult"],
                           use_diff=config_dict["use_diff"],
                           feature_size=config_dict["feature_size"],
-                          coreferability_type=coreferability_type)
+                          coreferability_type=coreferability_type,
+                          atten_hidden_size=config_dict["attention_hidden_size"])
 
     return model
 
