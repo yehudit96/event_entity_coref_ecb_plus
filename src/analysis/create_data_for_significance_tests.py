@@ -29,11 +29,11 @@ args = parser.parse_args()
 
 
 def sample_test_topics():
-    '''
+    """
     This function samples 1000 topics combinations and writes the coreference clusters of those topic
      of system A and system B (in this case, system A is the joint model and
     system B is the disjoint model) into a files in CoNLL format.
-    '''
+    """
     # test_A_path = 'models/kian_split/nov/08_11_1/test_topics' # joint model test corpus object
     # test_B_path = 'models/kian_split/nov_2/12_11_1/test_topics' # disjoint model test corpus object
 
@@ -48,35 +48,37 @@ def sample_test_topics():
         test_data_b = cPickle.load(f)
 
     print('Finish loading predictions files.')
+    if not os.path.exists(args.out_dir):
+        os.mkdir(args.out_dir)
 
-    with open(os.path.join(args.out_dir,'scorer_commands'), 'w') as f:
+    with open(os.path.join(args.out_dir, 'scorer_commands'), 'w') as f:
         for i in range(1000):
             print('Create test sample {}'.format(i))
             topic_keys = list(test_data_a.keys())
-            sampled_keys = choices(topic_keys, k=20)
+            sampled_keys = choices(topic_keys, k=16)
 
             corpus_a = Corpus()
             corpus_b = Corpus()
             for key in sampled_keys:
                 topic_a = test_data_a[key]
-                corpus_a.add_topic(key,topic_a)
+                corpus_a.add_topic(key, topic_a)
                 topic_b = test_data_b[key]
-                corpus_b.add_topic(key,topic_b)
+                corpus_b.add_topic(key, topic_b)
 
-            out_dir = os.path.join(args.out_dir,'run_{}'.format(i))
+            out_dir = os.path.join(args.out_dir, 'run_{}'.format(i))
             if not os.path.exists(out_dir):
                 os.mkdir(out_dir)
 
             gold_out_file = os.path.join(out_dir, 'CD_test_event_mention_based_{}.key_conll'.format(i))
             write_mention_based_cd_clusters(corpus_a, is_event=True, is_gold=True, out_file=gold_out_file)
 
-            a_out_file = os.path.join(out_dir, 'CD_test_event_mention_based_{}_{}.response_conll'.format('A',i))
+            a_out_file = os.path.join(out_dir, 'CD_test_event_mention_based_{}_{}.response_conll'.format('A', i))
             write_mention_based_cd_clusters(corpus_a, is_event=True, is_gold=False, out_file=a_out_file)
 
-            b_out_file = os.path.join(out_dir, 'CD_test_event_mention_based_{}_{}.response_conll'.format('B',i))
+            b_out_file = os.path.join(out_dir, 'CD_test_event_mention_based_{}_{}.response_conll'.format('B', i))
             write_mention_based_cd_clusters(corpus_b, is_event=True, is_gold=False, out_file=b_out_file)
 
-            conll_file_a = os.path.join(out_dir,'conll_a_{}'.format(i))
+            conll_file_a = os.path.join(out_dir, 'conll_a_{}'.format(i))
             conll_file_b = os.path.join(out_dir, 'conll_b_{}'.format(i))
             f.write('perl scorer/scorer.pl all {} {} none > {} \n'.format
                     (gold_out_file, a_out_file, conll_file_a))
@@ -85,9 +87,9 @@ def sample_test_topics():
 
 
 def run_scorers():
-    '''
+    """
     This function runs the CoNLL scorer for each topics combination.
-    '''
+    """
     import subprocess
     parallel_tasks = 40
     tasks = []
@@ -119,12 +121,12 @@ def run_scorers():
 
 
 def read_conll_f1(filename):
-    '''
+    """
     This function reads the results of the CoNLL scorer , extracts the F1 measures of the MUS,
     B-cubed and the CEAF-e and calculates CoNLL F1 score.
     :param filename: a file stores the scorer's results.
     :return: the CoNLL F1
-    '''
+    """
     f1_list = []
     with open(filename, "r") as ins:
         for line in ins:
@@ -140,12 +142,12 @@ def read_conll_f1(filename):
 
 
 def parse_scorer_output():
-    '''
+    """
     This function reads the results of the CoNLL scorer for all the 1000 topics combinations
     (for both system A and system B), extracts the F1 measures of the MUS, B-cubed and the CEAF-e, calculates CoNLL F1 scores
     and write them to a file.
     :return:
-    '''
+    """
     a_scores_file = open(os.path.join(args.out_dir, 'a_scores.txt'), 'w')
     b_scores_file = open(os.path.join(args.out_dir, 'b_scores.txt'), 'w')
     for i in range(1000):
@@ -163,23 +165,24 @@ def parse_scorer_output():
 
 
 def test_significance():
-    '''
+    """
     Runs the whole process of creating the results for statistical significance tests.
-    '''
+    """
     sample_test_topics()
     run_scorers()
     parse_scorer_output()
 
 
 def main():
-    '''
+    """
     This script runs the whole process of creating the results for statistical significance tests,
     which includes sampling of 1000 topics combinations, extracting the results of system A and system
     B for those combinations, running CoNLL scorer for each system in each topics combination
     and extracting the CoNLL results.
     :return:
-    '''
+    """
     test_significance()
+
 
 if __name__ == '__main__':
     main()

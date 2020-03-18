@@ -11,6 +11,8 @@ from scipy import stats
 
 ### Normality Check
 # H0: data is normally distributed
+
+
 def normality_check(data_A, data_B, name, alpha):
 
     if(name=="Shapiro-Wilk"):
@@ -40,6 +42,7 @@ def normality_check(data_A, data_B, name, alpha):
         ks_results = stats.kstest([a - b for a, b in zip(data_A, data_B)], 'norm')
         return ks_results[1]
 
+
 ## McNemar test
 def calculateContingency(data_A, data_B, n):
     ABrr = 0
@@ -56,6 +59,7 @@ def calculateContingency(data_A, data_B, n):
         else:
             ABww = ABww + 1
     return np.array([[ABrr, ABrw], [ABwr, ABww]])
+
 
 def mcNemar(table):
     statistic = float(np.abs(table[0][1]-table[1][0]))**2/(table[1][0]+table[0][1])
@@ -74,7 +78,7 @@ def rand_permutation(data_A, data_B, n, R):
     for x in range(0, R):
         temp_A = data_A
         temp_B = data_B
-        samples = [np.random.randint(1, 3) for i in xrange(n)] #which samples to swap without repetitions
+        samples = [np.random.randint(1, 3) for i in range(n)] #which samples to swap without repetitions
         swap_ind = [i for i, val in enumerate(samples) if val == 1]
         for ind in swap_ind:
             temp_B[ind], temp_A[ind] = temp_A[ind], temp_B[ind]
@@ -93,7 +97,7 @@ def rand_permutation(data_A, data_B, n, R):
 # "An Empirical Investigation of Statistical Significance in NLP".
 def Bootstrap(data_A, data_B, n, R):
     delta_orig = float(sum([x - y for x, y in zip(data_A, data_B)])) / n
-    print("original delta {}".format(delta_orig))
+    print(("original delta {}".format(delta_orig)))
     r = 0
     for x in range(0, R):
         temp_A = []
@@ -103,14 +107,12 @@ def Bootstrap(data_A, data_B, n, R):
             temp_A.append(data_A[samp])
             temp_B.append(data_B[samp])
         delta = float(sum([x - y for x, y in zip(temp_A, temp_B)])) / n
-        print("curr delta {}".format(delta))
+        print(("curr delta {}".format(delta)))
         # if (delta < 2*delta_orig): #incorrect implementation
         if (delta > 2*delta_orig):
             r = r + 1
     pval = float(r)/(R)
     return pval
-
-
 
 
 def main():
@@ -121,47 +123,51 @@ def main():
     filename_B = sys.argv[2]
     alpha = sys.argv[3]
 
-
     with open(filename_A) as f:
         data_A = f.read().splitlines()
 
     with open(filename_B) as f:
         data_B = f.read().splitlines()
 
-    data_A = list(map(float,data_A))
-    data_B = list(map(float,data_B))
+    data_A = list(map(float, data_A))
+    data_B = list(map(float, data_B))
 
-    print("\nPossible statistical tests: Shapiro-Wilk, Anderson-Darling, Kolmogorov-Smirnov, t-test, Wilcoxon, McNemar, Permutation, Bootstrap")
-    name = raw_input("\nEnter name of statistical test: ")
+    print("\nPossible statistical tests: "
+          "Shapiro-Wilk, Anderson-Darling, Kolmogorov-Smirnov, t-test, Wilcoxon, McNemar, Permutation, Bootstrap")
+    name = input("\nEnter name of statistical test: ")
 
-    ### Normality Check
-    if(name=="Shapiro-Wilk" or name=="Anderson-Darling" or name=="Kolmogorov-Smirnov"):
+    #  Normality Check
+    if name == "Shapiro-Wilk" or name == "Anderson-Darling" or name == "Kolmogorov-Smirnov":
         output = normality_check(data_A, data_B, name, alpha)
 
-        if(float(output)>float(alpha)):
-            answer = raw_input("\nThe normal test is significant, would you like to perform a t-test for checking significance of difference between results? (Y\N) ")
-            if(answer=='Y'):
+        if float(output) > float(alpha):
+            answer = input(
+                'The normal test is significant, would you like to perform a '
+                't-test for checking significance of difference between results? (Y\\N)')
+            if answer == 'Y':
                 # two sided t-test
                 t_results = stats.ttest_rel(data_A, data_B)
                 # correct for one sided test
                 pval = t_results[1]/2
-                if(float(pval)<=float(alpha)):
-                    print("\nTest result is significant with p-value: {}".format(pval))
+                if float(pval) <= float(alpha):
+                    print(("\nTest result is significant with p-value: {}".format(pval)))
                     return
                 else:
-                    print("\nTest result is not significant with p-value: {}".format(pval))
+                    print(("\nTest result is not significant with p-value: {}".format(pval)))
                     return
             else:
-                answer2 = raw_input("\nWould you like to perform a different test (permutation or bootstrap)? If so enter name of test, otherwise type 'N' ")
-                if(answer2=='N'):
+                answer2 = input("\nWould you like to perform a different test "
+                                "(permutation or bootstrap)? If so enter name of test, otherwise type 'N' ")
+                if answer2=='N':
                     print("\nbye-bye")
                     return
                 else:
                     name = answer2
         else:
-            answer = raw_input("\nThe normal test is not significant, would you like to perform a non-parametric test for checking significance of difference between results? (Y\N) ")
-            if (answer == 'Y'):
-                answer2 = raw_input("\nWhich test (Permutation or Bootstrap)? ")
+            answer = input("\nThe normal test is not significant, would you like to perform "
+                           "a non-parametric test for checking significance of difference between results? (Y\\N) ")
+            if answer == 'Y':
+                answer2 = input("\nWhich test (Permutation or Bootstrap)? ")
                 name = answer2
             else:
                 print("\nbye-bye")
@@ -170,65 +176,62 @@ def main():
     ### Statistical tests
 
     # Paired Student's t-test: Calculate the T-test on TWO RELATED samples of scores, a and b. for one sided test we multiply p-value by half
-    if(name=="t-test"):
+    if name == "t-test":
         t_results = stats.ttest_rel(data_A, data_B)
         # correct for one sided test
         pval = float(t_results[1]) / 2
-        if (float(pval) <= float(alpha)):
-            print("\nTest result is significant with p-value: {}".format(pval))
+        if float(pval) <= float(alpha):
+            print(("\nTest result is significant with p-value: {}".format(pval)))
             return
         else:
-            print("\nTest result is not significant with p-value: {}".format(pval))
+            print(("\nTest result is not significant with p-value: {}".format(pval)))
             return
 
     # Wilcoxon: Calculate the Wilcoxon signed-rank test.
-    if(name=="Wilcoxon"):
+    if name=="Wilcoxon":
         wilcoxon_results = stats.wilcoxon(data_A, data_B)
-        if (float(wilcoxon_results[1]) <= float(alpha)):
-            print("\nTest result is significant with p-value: {}".format(wilcoxon_results[1]))
+        if float(wilcoxon_results[1]) <= float(alpha):
+            print(("\nTest result is significant with p-value: {}".format(wilcoxon_results[1])))
             return
         else:
-            print("\nTest result is not significant with p-value: {}".format(wilcoxon_results[1]))
+            print(("\nTest result is not significant with p-value: {}".format(wilcoxon_results[1])))
             return
 
-    if(name=="McNemar"):
-        print("\nThis test requires the results to be binary : A[1, 0, 0, 1, ...], B[1, 0, 1, 1, ...] for success or failure on the i-th example.")
+    if name=="McNemar":
+        print("\nThis test requires the results to be binary : "
+              "A[1, 0, 0, 1, ...], B[1, 0, 1, 1, ...] for success or failure on the i-th example.")
         f_obs = calculateContingency(data_A, data_B, len(data_A))
         mcnemar_results = mcNemar(f_obs)
-        if (float(mcnemar_results) <= float(alpha)):
-            print("\nTest result is significant with p-value: {}".format(mcnemar_results))
+        if float(mcnemar_results) <= float(alpha):
+            print(("\nTest result is significant with p-value: {}".format(mcnemar_results)))
             return
         else:
-            print("\nTest result is not significant with p-value: {}".format(mcnemar_results))
+            print(("\nTest result is not significant with p-value: {}".format(mcnemar_results)))
             return
 
-    if(name=="Permutation"):
+    if name=="Permutation":
         R = max(10000, int(len(data_A) * (1 / float(alpha))))
         pval = rand_permutation(data_A, data_B, len(data_A), R)
-        if (float(pval) <= float(alpha)):
-            print("\nTest result is significant with p-value: {}".format(pval))
+        if float(pval) <= float(alpha):
+            print(("\nTest result is significant with p-value: {}".format(pval)))
             return
         else:
-            print("\nTest result is not significant with p-value: {}".format(pval))
+            print(("\nTest result is not significant with p-value: {}".format(pval)))
             return
 
-
-    if(name=="Bootstrap"):
+    if name=="Bootstrap":
         R = max(10000, int(len(data_A) * (1 / float(alpha))))
         pval = Bootstrap(data_A, data_B, len(data_A), R)
-        if (float(pval) <= float(alpha)):
-            print("\nTest result is significant with p-value: {}".format(pval))
+        if float(pval) <= float(alpha):
+            print(("\nTest result is significant with p-value: {}".format(pval)))
             return
         else:
-            print("\nTest result is not significant with p-value: {}".format(pval))
+            print(("\nTest result is not significant with p-value: {}".format(pval)))
             return
 
     else:
         print("\nInvalid name of statistical test")
         sys.exit(1)
-
-
-
 
 
 if __name__ == "__main__":
