@@ -106,3 +106,10 @@ def get_pair_score(mention1, mention2, coref_type):
         return np.array([score]).reshape(1, 1)
     elif coref_type in ['attention', 'linear']:
         return vector.reshape(1, -1)
+
+def has_rule(mention1, mention2):
+    lemma1 = mention_to_lemma(mention1)
+    lemma2 = mention_to_lemma(mention2)
+    rule = '_'.join(sorted([lemma1, lemma2]))
+    return rule in rules_score
+    
