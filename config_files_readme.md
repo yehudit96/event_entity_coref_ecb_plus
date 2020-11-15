@@ -1,3 +1,4 @@
+
 ## Configuration files
 In this system, experiments are configured using JSON files.
 This readme explains the main attributes of three JSON configuration files:
@@ -39,6 +40,12 @@ to be explained:
 * `use_args_feats` - whether to use argument/predicate vectors.
 * `use_binary_feats` -  whether to use the coreference binary features.
 * `wd_entity_coref_file` - a path to a file (provided in this repo) which contains the predictions of a WD entity coreference system on the ECB+. We used CoreNLP for that purpose.
+* `coreferability` - the coreferrability, the integration method used to integrate the paraphrase score or vector into the model: [none, linear, score, an_score, bidding, bidding_fill, an_bidding_fill, attention] (the usage is in src/shared/coreferability.py)
+* `entity_coref` - apply the integrated method also on entities mentions (default false)
+* `joint_model` - train the entity and event models jointly
+* `attention_hidden_size` - (relevant only if the `corefereability` value is `attention`) the size of the hidden size in the attention model
+* `use_paraphrases` - true if the mention representation need to contain also the paraphrases of the mention
+false if not (part of the experiments, not relevant)
 
 
 ## Configuration file for testing (test_config.json):
@@ -58,5 +65,11 @@ The main attributes of this configuration files are:
 * `entity_gold_file_path` - path to the key (gold) entity coreference file (for running the evaluation with the CoNLL scorer), provided in this repo.
 * `predicted_topics_path` - path to a pickle file which contains the predicted topics, provided in this repo at data/external/document_clustering or can be obtained using the code in the folder src/doc_clustering.
 * `wd_entity_coref_file` - a path to a file (provided in this repo) which contains the predictions of a WD entity coreference system on the ECB+. We used CoreNLP for that purpose.
+
+* `coreferability` - the coreferrability, the integration method used to integrate the paraphrase score or vector into the model: [none, linear, score, an_score, bidding, bidding_fill, an_bidding_fill, attention] (the usage is in src/shared/coreferability.py)
+* `entity_coref` - apply the integrated method also on entities mentions (default false)
+* `joint_model` - train the entity and event models jointly
+* `use_paraphrases` - true if the mention representation need to contain also the paraphrases of the mention
+false if not (part of the experiments, not relevant)
 
 

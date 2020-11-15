@@ -46,5 +46,5 @@
     "joint_model": true,
     "attention_hidden_size": 50,
 
-    "use_paraphrase": true
+    "use_paraphrase": false
 }
