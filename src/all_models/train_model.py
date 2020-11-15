@@ -119,13 +119,13 @@ def train_model(train_set, dev_set):
         topics_counter = 0
         topics_keys = list(topics.keys())
         random.shuffle(topics_keys)
-        for topic_id in topics_keys:
+        for i, topic_id in enumerate(topics_keys):
             topics_counter += 1
             topic = topics[topic_id]
 
             logging.info('=========================================================================')
             logging.info('Topic {}:'.format(topic_id))
-            print('Topic {}:'.format(topic_id))
+            print('Topic {}: {}/{}'.format(topic_id, i+1, len(topics_keys)))
 
             # init event and entity clusters
             event_mentions, entity_mentions = topic_to_mention_list(topic, is_gold=True)
@@ -162,7 +162,8 @@ def train_model(train_set, dev_set):
                 logging.info('Train entity model and merge entity clusters...')
                 train_and_merge(clusters=entity_clusters, other_clusters=event_clusters,
                                 model=cd_entity_model, optimizer=cd_entity_optimizer,
-                                loss=cd_entity_loss,device=device,topic=topic,is_event=False,epoch=epoch,
+                                loss=cd_entity_loss,device=device, topic=topic,
+                                use_paraphrase=config_dict["use_paraphrase"], is_event=False, epoch=epoch,
                                 topics_counter=topics_counter, topics_num=topics_num,
                                 threshold=entity_th)
                 # Events
@@ -170,7 +171,8 @@ def train_model(train_set, dev_set):
                 logging.info('Train event model and merge event clusters...')
                 train_and_merge(clusters=event_clusters, other_clusters=entity_clusters,
                                 model=cd_event_model, optimizer=cd_event_optimizer,
-                                loss=cd_event_loss,device=device,topic=topic,is_event=True,epoch=epoch,
+                                loss=cd_event_loss,device=device, topic=topic,
+                                use_paraphrase=config_dict["use_paraphrase"], is_event=True, epoch=epoch,
                                 topics_counter=topics_counter, topics_num=topics_num,
                                 threshold=event_th)
 
@@ -257,7 +259,7 @@ def train_model(train_set, dev_set):
 
 
 def train_and_merge(clusters, other_clusters, model, optimizer,
-                    loss, device, topic ,is_event, epoch,
+                    loss, device, topic, is_event, use_paraphrase, epoch,
                     topics_counter, topics_num, threshold):
     '''
     This function trains event/entity and then uses agglomerative clustering algorithm that
@@ -296,9 +298,9 @@ def train_and_merge(clusters, other_clusters, model, optimizer,
 
         # Update span representations after training
         create_mention_span_representations(event_mentions, model, device, topic.docs, is_event=True,
-                                            requires_grad=False)
+                                            use_paraphrase=use_paraphrase, requires_grad=False)
         create_mention_span_representations(entity_mentions, model, device, topic.docs, is_event=False,
-                                            requires_grad=False)
+                                            use_paraphrase=use_paraphrase, requires_grad=False)
 
         cluster_pairs = test_cluster_pairs
 
@@ -309,6 +311,7 @@ def train_and_merge(clusters, other_clusters, model, optimizer,
               config_dict["use_binary_feats"],
               config_dict["coreferability"],
               config_dict["entity_coref"],
+              config_dict["use_paraphrase"],
               config_dict["joint_model"])
 
 

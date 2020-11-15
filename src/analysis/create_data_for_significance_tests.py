@@ -14,6 +14,13 @@ sys.path.append("/src/shared/")
 from eval_utils import *
 from classes import *
 
+"""
+--test_A_path {baseline model results}/test_topics
+--test_B_path {comparison model results}/test_topics
+--measure evaluation measure score to compare
+--out_dir src/analysis/data1
+"""
+
 parser = argparse.ArgumentParser(description='Creating data for statistical significance tests')
 
 parser.add_argument('--test_A_path', type=str,
@@ -22,6 +29,8 @@ parser.add_argument('--test_A_path', type=str,
 parser.add_argument('--test_B_path', type=str,
                     help='  The path to the test corpus of the disjoint model or another model ablation '
                          '(which includes the mentions with their predicted coreference chains)')
+parser.add_argument('--measure', type=str,
+                    help=' To which measure save the f1 scores (MUC\Bcubed\CEAFe\CoNLL)')
 parser.add_argument('--out_dir', type=str,
                     help='Output folder')
 
@@ -34,11 +43,9 @@ def sample_test_topics():
      of system A and system B (in this case, system A is the joint model and
     system B is the disjoint model) into a files in CoNLL format.
     """
-    # test_A_path = 'models/kian_split/nov/08_11_1/test_topics' # joint model test corpus object
-    # test_B_path = 'models/kian_split/nov_2/12_11_1/test_topics' # disjoint model test corpus object
 
-    test_A_path = args.test_A_path # full model test corpus object
-    test_B_path = args.test_B_path # disjoint model test corpus object
+    test_A_path = args.test_A_path # baseline model test corpus object
+    test_B_path = args.test_B_path # chirps* features model test corpus object
 
     print('Loading predictions files...')
 
@@ -55,7 +62,7 @@ def sample_test_topics():
         for i in range(1000):
             print('Create test sample {}'.format(i))
             topic_keys = list(test_data_a.keys())
-            sampled_keys = choices(topic_keys, k=16)
+            sampled_keys = choices(topic_keys, k=20)
 
             corpus_a = Corpus()
             corpus_b = Corpus()
@@ -120,12 +127,13 @@ def run_scorers():
             tasks_count += 1
 
 
-def read_conll_f1(filename):
+def read_conll_f1(filename, measure):
     """
-    This function reads the results of the CoNLL scorer , extracts the F1 measures of the MUS,
+    This function reads the results of the CoNLL scorer , extracts the F1 measures of the MUC,
     B-cubed and the CEAF-e and calculates CoNLL F1 score.
     :param filename: a file stores the scorer's results.
-    :return: the CoNLL F1
+    :param measure: the measure scores to return - MUC\Bcubed\CEAFe\CoNLL
+    :return: the measure score
     """
     f1_list = []
     with open(filename, "r") as ins:
@@ -134,11 +142,12 @@ def read_conll_f1(filename):
             if new_line.find('F1:') != -1:
                 f1_list.append(float(new_line.split(': ')[-1][:-1]))
 
-    muc_f1 = f1_list[1]
-    bcued_f1 = f1_list[3]
-    ceafe_f1 = f1_list[7]
-
-    return (muc_f1 + bcued_f1 + ceafe_f1)/float(3)
+    scores = {}
+    scores['muc_f1'] = f1_list[1]
+    scores['bcubed_f1'] = f1_list[3]
+    scores['ceafe_f1'] = f1_list[7]
+    scores['conll_f1'] = (scores['muc_f1'] + scores['bcubed_f1'] + scores['ceafe_f1'])/float(3)
+    return scores[measure.lower() + '_f1']
 
 
 def parse_scorer_output():
@@ -148,15 +157,15 @@ def parse_scorer_output():
     and write them to a file.
     :return:
     """
-    a_scores_file = open(os.path.join(args.out_dir, 'a_scores.txt'), 'w')
-    b_scores_file = open(os.path.join(args.out_dir, 'b_scores.txt'), 'w')
+    a_scores_file = open(os.path.join(args.out_dir, 'a_scores_{}.txt'.format(args.measure.lower())), 'w')
+    b_scores_file = open(os.path.join(args.out_dir, 'b_scores_{}.txt'.format(args.measure.lower())), 'w')
     for i in range(1000):
         out_dir = os.path.join(args.out_dir, 'run_{}'.format(i))
         conll_file_a = os.path.join(out_dir, 'conll_a_{}'.format(i))
         conll_file_b = os.path.join(out_dir, 'conll_b_{}'.format(i))
 
-        a_f1 = read_conll_f1(conll_file_a)
-        b_f1 = read_conll_f1(conll_file_b)
+        a_f1 = read_conll_f1(conll_file_a, args.measure)
+        b_f1 = read_conll_f1(conll_file_b, args.measure)
         a_scores_file.write('{}\n'.format(a_f1))
         b_scores_file.write('{}\n'.format(b_f1))
 
@@ -168,8 +177,8 @@ def test_significance():
     """
     Runs the whole process of creating the results for statistical significance tests.
     """
-    sample_test_topics()
-    run_scorers()
+    #sample_test_topics()
+    #run_scorers()
     parse_scorer_output()
 
 

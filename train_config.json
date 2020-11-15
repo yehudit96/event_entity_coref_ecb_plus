@@ -6,12 +6,13 @@
     "dev_path": "data/processed/cybulska_setup/full_swirl_ecb/dev_data",
     "dev_th_range": [0.5, 0.6],
 
+    "rules_proba": "data/external/rules_proba/rules_scores",
     "entity_merge_threshold": 0.5,
     "epochs": 50,
     "event_merge_threshold": 0.5,
     "feature_size": 50,
-    "glove_path": "/home/nlp/barhoms/joint_coref/resources/glove.6B.300d.txt",
-    "gpu_num": 0,
+    "glove_path": "data/external/GloVe/glove.6B.300d.txt",
+    "gpu_num": 3,
 
     "load_predicted_topics": false,
     "log_interval": 32,
@@ -38,6 +39,12 @@
     "use_pretrained_char": true,
 
     "wd_entity_coref_file": "data/external/stanford_neural_wd_entity_coref_out/ecb_wd_coref.json",
-    "weight_decay": 0
+    "weight_decay": 0,
 
+    "coreferability": "linear",
+    "entity_coref": false,
+    "joint_model": true,
+    "attention_hidden_size": 50,
+
+    "use_paraphrase": true
 }

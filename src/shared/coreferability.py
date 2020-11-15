@@ -4,9 +4,10 @@ import numpy as np
 from enum import Enum
 lemmatizer = WordNetLemmatizer()
 
-rules_score_path = 'data/external/coreferability/rules_scores'
+rules_score_path = 'data/external/coreferability/rf_rules_scores'
 an_rules_score_path = 'data/external/coreferability/annotated_rules_scores'
 vectors_path = 'data/external/coreferability/vectors'
+top_5_paraphrases = 'data/external/coreferability/rules_dict_top_5'
 
 with open(an_rules_score_path, 'rb') as rf:
     an_rules_score = cPickle.load(rf)
@@ -14,8 +15,14 @@ with open(an_rules_score_path, 'rb') as rf:
 with open(rules_score_path, 'rb') as rf:
     rules_score = cPickle.load(rf)
 
-avg = 0.11507013912825699 #average of only train event pairs
-an_avg = 0.6383347788378144
+with open(top_5_paraphrases, 'rb') as rf:
+    predicate_top_paraphrases = cPickle.load(rf)
+    
+    
+#avg = 0.11507013912825699 #average of only train event pairs
+#an_avg = 0.6383347788378144
+
+avg = 0.43107517809968393
 
 with open(vectors_path, 'rb') as f:
     vectors = cPickle.load(f)
@@ -113,3 +120,8 @@ def has_rule(mention1, mention2):
     rule = '_'.join(sorted([lemma1, lemma2]))
     return rule in rules_score
     
+
+def get_paraphrases(predicate):
+    if predicate.lower() in predicate_top_paraphrases:
+        return [m_predicate for m_predicate, score in predicate_top_paraphrases[predicate.lower()]] 
+    return []

@@ -28,6 +28,13 @@ clusters_count = 1
 
 analysis_pair_dict = {}
 
+DEBUG = False
+
+
+def log(msg):
+    if DEBUG:
+        print(msg)
+
 
 def get_topic(id):
     '''
@@ -80,13 +87,13 @@ def load_predicted_topics(test_set, config_dict):
         new_topics[topic_id] = Topic(topic_id)
 
         for doc_name in topic:
-            print(topic_id)
-            print(doc_name)
+            log(topic_id)
+            log(doc_name)
             if doc_name in all_doc_dict:
                 new_topics[topic_id].docs[doc_name] = all_doc_dict[doc_name]
         topic_counter += 1
 
-    print(len(new_topics))
+    log(len(new_topics))
     return new_topics
 
 
@@ -208,7 +215,7 @@ def init_entity_wd_clusters(entity_mentions, doc_to_entity_mentions):
             if len(cluster.mentions.values()) > 1:
                 count_matched_clusters += 1
 
-    print('Matched non-singleton clusters {}'.format(count_matched_clusters))
+    log('Matched non-singleton clusters {}'.format(count_matched_clusters))
     logging.info('Matched non-singleton clusters {}'.format(count_matched_clusters))
 
     return all_entity_clusters
@@ -373,6 +380,13 @@ def find_word_embed(word, model, device):
     word_tensor = model.embed(torch.tensor(word_ix,dtype=torch.long).to(device))
 
     return word_tensor
+
+
+def split_and_find_word_emb(word, model, device):
+    embs = []
+    for w in word.split():
+        embs.append(find_word_embed(w, model, device))
+    return torch.mean(torch.stack(embs), dim=0)  
 
 
 def find_mention_cluster(mention_id, clusters):
@@ -550,8 +564,8 @@ def loadGloVe(glove_filename):
                 vocab.append(row[0])
                 embd.append(row[1:])
                 if len(row[1:]) != 300:
-                    print(len(row[1:]))
-    print('Loaded GloVe!')
+                    log(len(row[1:]))
+    log('Loaded GloVe!')
     file.close()
 
     return vocab,embd
@@ -945,14 +959,14 @@ def generate_cluster_pairs(clusters, is_train):
     else:
         p = 0.6
 
-    print('Generating cluster pairs...')
+    log('Generating cluster pairs...')
     logging.info('Generating cluster pairs...')
 
-    print('Initial number of clusters = {}'.format(len(clusters)))
+    log('Initial number of clusters = {}'.format(len(clusters)))
     logging.info('Initial number of clusters = {}'.format(len(clusters)))
 
     if use_under_sampling:
-        print('Using under sampling with p = {}'.format(p))
+        log('Using under sampling with p = {}'.format(p))
         logging.info('Using under sampling with p = {}'.format(p))
 
     for cluster_1 in clusters:
@@ -977,13 +991,13 @@ def generate_cluster_pairs(clusters, is_train):
                             (cluster_2, cluster_1) not in pairs:
                         pairs.append((cluster_1, cluster_2))
 
-    print('Number of generated cluster pairs = {}'.format(len(pairs)))
+    log('Number of generated cluster pairs = {}'.format(len(pairs)))
     logging.info('Number of generated cluster pairs = {}'.format(len(pairs)))
 
     return pairs, test_pairs
 
 
-def get_mention_span_rep(mention, device, model, docs, is_event, requires_grad):
+def get_mention_span_rep(mention, device, model, docs, is_event, requires_grad, use_paraphrase):
     '''
     Creates for a mention its context and span text vectors and concatenates them.
     :param mention: an Mention object (either an EventMention or an EntityMention)
@@ -993,6 +1007,8 @@ def get_mention_span_rep(mention, device, model, docs, is_event, requires_grad):
     :param is_event: True if mention is an event mention and False if it is an entity mention
     :param requires_grad: True if tensors require gradients (for training time) , and
     False for inference time.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     :return: a tensor with size (1, 1374)
     '''
 
@@ -1000,9 +1016,19 @@ def get_mention_span_rep(mention, device, model, docs, is_event, requires_grad):
 
     if is_event:
         head = mention.mention_head
+        men_str = mention.mention_str
         head_tensor = find_word_embed(head, model, device)
         char_embeds = get_char_embed(head, model, device)
-        mention_tensor = torch.cat([head_tensor, char_embeds], 1)
+        if use_paraphrase:
+            paraphrases = get_paraphrases(men_str)
+            if paraphrases:
+                paraphrases_emb = [split_and_find_word_emb(par, model, device) for par in get_paraphrases(men_str) if par.strip() != '']
+                paraphrases_emb = torch.mean(torch.stack(paraphrases_emb), dim=0).to(device)
+            else:
+                paraphrases_emb = torch.zeros(model.embedding_dim).to(device).view(1, -1)
+            mention_tensor = torch.cat([head_tensor, char_embeds, paraphrases_emb], 1)
+        else:
+            mention_tensor = torch.cat([head_tensor, char_embeds], 1)
     else:
         mention_bow = torch.zeros(model.embedding_dim, requires_grad=requires_grad).to(device).view(1, -1)
         mention_embeds = [find_word_embed(token, model, device) for token in mention.get_tokens()
@@ -1029,7 +1055,7 @@ def get_mention_span_rep(mention, device, model, docs, is_event, requires_grad):
 
 
 def create_mention_span_representations(mentions, model, device, topic_docs, is_event,
-                                        requires_grad):
+                                        requires_grad, use_paraphrase):
     '''
     Creates for a set of mentions their context and span text vectors.
     :param mentions: a list of Mention objects (an EventMention or an EntityMention)
@@ -1039,16 +1065,18 @@ def create_mention_span_representations(mentions, model, device, topic_docs, is_
     :param is_event: True if mention is an event mention and False if it is an entity mention
     :param requires_grad: True if tensors require gradients (for training time) , and
     False for inference time.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
      embeddings (performs worse than ELMo embeddings)
     '''
     for mention in mentions:
         mention.span_rep = get_mention_span_rep(mention, device, model, topic_docs,
-                                                is_event, requires_grad)
+                                                is_event, requires_grad, use_paraphrase)
 
 
 def mention_pair_to_model_input(pair, model, device, topic_docs, is_event, requires_grad,
                                 use_args_feats, use_binary_feats, coreferability_type, entity_coref,
-                                other_clusters):
+                                use_paraphrase, other_clusters):
     '''
     Given a pair of mentions, the function builds the input to the network (the mention-pair
     representation) and returns it.
@@ -1066,6 +1094,8 @@ def mention_pair_to_model_input(pair, model, device, topic_docs, is_event, requi
     them.
     :param use_coreferability_score: whether to use the coreferability score or to ablate
     them.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     :param other_clusters: should be the current event clusters if pair is an entity mention pair
     and vice versa.
     :return: the mention-pair representation - a tensor of size (1,X), when X = 8522 in the full
@@ -1077,9 +1107,9 @@ def mention_pair_to_model_input(pair, model, device, topic_docs, is_event, requi
     # create span representation
     if requires_grad :
         mention_1.span_rep = get_mention_span_rep(mention_1, device, model, topic_docs,
-                                                  is_event, requires_grad)
+                                                  is_event, requires_grad, use_paraphrase)
         mention_2.span_rep = get_mention_span_rep(mention_2, device, model, topic_docs,
-                                                  is_event, requires_grad)
+                                                  is_event, requires_grad, use_paraphrase)
     span_rep_1 = mention_1.span_rep
     span_rep_2 = mention_2.span_rep
 
@@ -1119,13 +1149,13 @@ def mention_pair_to_model_input(pair, model, device, topic_docs, is_event, requi
         mention_pair_tensor = torch.cat([coref_vector, mention_pair_tensor], 1)
 
     mention_pair_tensor = mention_pair_tensor.to(device)
-
+    
     return mention_pair_tensor
 
 
 def train_pairs_batch_to_model_input(batch_pairs, model, device, topic_docs, is_event,
                                      use_args_feats, use_binary_feats, coreferability_type, entity_coref,
-                                     other_clusters):
+                                     use_paraphrase, other_clusters):
     '''
     Creates input tensors (mention pair representations) to all mention pairs in the batch
     (for training time).
@@ -1141,7 +1171,9 @@ def train_pairs_batch_to_model_input(batch_pairs, model, device, topic_docs, is_
     :param use_binary_feats: whether to use the binary coreference features or to ablate
     them.
     :param use_coreferability_score: whether to use the coreferability score or to ablate
-    them.
+    them
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     :param other_clusters: should be the current event clusters if batch_pairs are entity mention
      pairs and vice versa.
     :return: batch_pairs_tensor - a tensor of the mention pair representations
@@ -1156,6 +1188,7 @@ def train_pairs_batch_to_model_input(batch_pairs, model, device, topic_docs, is_
                                                           use_binary_feats=use_binary_feats,
                                                           coreferability_type=coreferability_type,
                                                           entity_coref=entity_coref,
+                                                          use_paraphrase=use_paraphrase,
                                                           other_clusters=other_clusters)
         if not mention_pair_tensor.requires_grad:
             logging.info('mention_pair_tensor does not require grad ! (warning)')
@@ -1200,8 +1233,9 @@ def train(cluster_pairs, model, optimizer, loss_function, device, topic_docs, ep
     # creates mention pairs and their true labels (creates max 100,000 mention pairs - due to memory constrains)
     pairs = cluster_pairs_to_mention_pairs(cluster_pairs)
     random.shuffle(pairs)
-
+    print("start training {}".format(mode))
     for reg_epoch in range(0, epochs):
+        print("epoch {}".format(reg_epoch))
         samples_count = 0
         batches_count = 0
         total_loss = 0
@@ -1215,6 +1249,7 @@ def train(cluster_pairs, model, optimizer, loss_function, device, topic_docs, ep
                                                                       config_dict["use_binary_feats"],
                                                                       config_dict["coreferability"],
                                                                       config_dict["entity_coref"],
+                                                                      config_dict["use_paraphrase"],
                                                                       other_clusters)
 
             model.zero_grad()
@@ -1225,7 +1260,7 @@ def train(cluster_pairs, model, optimizer, loss_function, device, topic_docs, ep
             total_loss += loss.item()
 
             if samples_count % config_dict["log_interval"] == 0:
-                print('epoch {}, topic {}/{} - {} model '
+                log('epoch {}, topic {}/{} - {} model '
                       ' [{}/{} ({:.0f}%)]  Loss: {:.6f}'.format(
                     epoch,topics_counter, topics_num, mode, samples_count, len(pairs),
                     100. * samples_count / len(pairs), (total_loss/float(batches_count))))
@@ -1274,7 +1309,7 @@ def cluster_pairs_to_mention_pairs(cluster_pairs):
 
 def test_pairs_batch_to_model_input(batch_pairs, model, device, topic_docs, is_event,
                                     use_args_feats, use_binary_feats, coreferability_type, entity_coref,
-                                    other_clusters):
+                                    use_paraphrase, other_clusters):
 
     '''
     Creates input tensors (mention pair representations) for all mention pairs in the batch
@@ -1290,6 +1325,8 @@ def test_pairs_batch_to_model_input(batch_pairs, model, device, topic_docs, is_e
     them.
     :param use_binary_feats: whether to use the binary coreference features or to ablate
     them.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     :param other_clusters: should be the current event clusters if batch_pairs are entity mention
      pairs and vice versa.
     :return: batch_pairs_tensor - a tensor of the mention pair representations
@@ -1304,6 +1341,7 @@ def test_pairs_batch_to_model_input(batch_pairs, model, device, topic_docs, is_e
                                                           use_binary_feats=use_binary_feats,
                                                           coreferability_type=coreferability_type,
                                                           entity_coref=entity_coref,
+                                                          use_paraphrase=use_paraphrase,
                                                           other_clusters=other_clusters)
         tensors_list.append(mention_pair_tensor)
 
@@ -1342,8 +1380,8 @@ def key_with_max_val(d):
 
 
 def merge_clusters(pair_to_merge, clusters ,other_clusters, is_event,
-                   model, device, topic_docs, curr_pairs_dict,
-                   use_args_feats, use_binary_feats, coreferability_type, entity_coref, joint_model):
+                   model, device, topic_docs, curr_pairs_dict, use_args_feats, 
+                   use_binary_feats, coreferability_type, entity_coref, use_paraphrase, joint_model):
     '''
     This function:
     1. Merges a cluster pair and update its span vector (average of all its mentions' span
@@ -1366,6 +1404,8 @@ def merge_clusters(pair_to_merge, clusters ,other_clusters, is_event,
     them.
     :param use_binary_feats: whether to use the binary coreference features or to ablate
     them.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     '''
     cluster_i = pair_to_merge[0]
     cluster_j = pair_to_merge[1]
@@ -1406,12 +1446,12 @@ def merge_clusters(pair_to_merge, clusters ,other_clusters, is_event,
     # create scores for the new pairs
     for pair in new_pairs:
         pair_score = assign_score(pair, model, device, topic_docs, is_event,
-                                  use_args_feats, use_binary_feats, coreferability_type, entity_coref, other_clusters)
+                                  use_args_feats, use_binary_feats, coreferability_type, entity_coref, use_paraphrase, other_clusters)
         curr_pairs_dict[pair] = pair_score
 
 
 def assign_score(cluster_pair, model, device, topic_docs, is_event, use_args_feats,
-                 use_binary_feats, coreferability_type, entity_coref, other_clusters):
+                 use_binary_feats, coreferability_type, entity_coref, use_paraphrase, other_clusters):
     '''
     Assigns coreference (or quality of merge) score to a cluster pair by averaging the mention-pair
     scores predicted by the model.
@@ -1424,6 +1464,8 @@ def assign_score(cluster_pair, model, device, topic_docs, is_event, use_args_fea
     them.
     :param use_binary_feats: whether to use the binary coreference features or to ablate
     them.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not.
     :param other_clusters: should be the current event clusters if cluster_pair is an entity pair
      and vice versa.
     :return: The average mention pairwise score
@@ -1439,6 +1481,7 @@ def assign_score(cluster_pair, model, device, topic_docs, is_event, use_args_fea
                                                        use_binary_feats=use_binary_feats,
                                                        coreferability_type=coreferability_type,
                                                        entity_coref=entity_coref,
+                                                       use_paraphrase=use_paraphrase,
                                                        other_clusters=other_clusters)
 
         model_scores = model(batch_tensor).detach().cpu().numpy()
@@ -1452,7 +1495,7 @@ def assign_score(cluster_pair, model, device, topic_docs, is_event, use_args_fea
 
 def merge(clusters, cluster_pairs, other_clusters,model, device, topic_docs, epoch, topics_counter,
           topics_num, threshold, is_event, use_args_feats, use_binary_feats, coreferability_type, entity_coref,
-          joint_model):
+          use_paraphrase, joint_model):
     '''
     Merges cluster pairs in agglomerative manner till it reaches a pre-defined threshold. In each step, the function merges
     cluster pair with the highest score, and updates the candidate cluster pairs according to the
@@ -1477,8 +1520,10 @@ def merge(clusters, cluster_pairs, other_clusters,model, device, topic_docs, epo
     :param use_args_feats: whether to use the semantically-dependent mention vectors or to ablate
     them.
     :param use_binary_feats: whether to use the binary coreference features or to ablate
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     '''
-    print('Initialize cluster pairs scores... ')
+    log('Initialize cluster pairs scores... ')
     logging.info('Initialize cluster pairs scores... ')
     # initializes the pairs-scores dict
     pairs_dict = {}
@@ -1486,19 +1531,20 @@ def merge(clusters, cluster_pairs, other_clusters,model, device, topic_docs, epo
     # init the scores (that the model assigns to the pairs)
     for pair in cluster_pairs:
         pair_score = assign_score(pair, model, device, topic_docs, is_event,
-                                  use_args_feats,use_binary_feats, coreferability_type, entity_coref, other_clusters)
+                                  use_args_feats,use_binary_feats, coreferability_type, 
+                                  entity_coref, use_paraphrase, other_clusters)
         pairs_dict[pair] = pair_score
 
     while True:
         # finds max pair (break if we can't find one  - max score < threshold)
         if len(pairs_dict) < 2:
-            print('Less the 2 clusters had left, stop merging!')
+            log('Less the 2 clusters had left, stop merging!')
             logging.info('Less the 2 clusters had left, stop merging!')
             break
         max_pair, max_score = key_with_max_val(pairs_dict)
 
         if max_score > threshold:
-            print('epoch {} topic {}/{} - merge {} clusters with score {} clusters : {} {}'.format(
+            log('epoch {} topic {}/{} - merge {} clusters with score {} clusters : {} {}'.format(
                 epoch, topics_counter, topics_num, mode, str(max_score), str(max_pair[0]),
                 str(max_pair[1])))
             logging.info('epoch {} topic {}/{} - merge {} clusters with score {} clusters : {} {}'.format(
@@ -1506,9 +1552,9 @@ def merge(clusters, cluster_pairs, other_clusters,model, device, topic_docs, epo
                 str(max_pair[1])))
             merge_clusters(max_pair, clusters, other_clusters, is_event,
                            model, device, topic_docs, pairs_dict, use_args_feats,
-                           use_binary_feats, coreferability_type, entity_coref, joint_model)
+                           use_binary_feats, coreferability_type, entity_coref, use_paraphrase, joint_model)
         else:
-            print('Max score = {} is lower than threshold = {},'
+            log('Max score = {} is lower than threshold = {},'
                   ' stopped merging!'.format(max_score, threshold))
             logging.info('Max score = {} is lower than threshold = {},' \
                          ' stopped merging!'.format(max_score, threshold))
@@ -1517,7 +1563,7 @@ def merge(clusters, cluster_pairs, other_clusters,model, device, topic_docs, epo
 
 def test_model(clusters, other_clusters, model, device, topic_docs, is_event, epoch,
                topics_counter, topics_num, threshold, use_args_feats,
-               use_binary_feats, coreferability_type, entity_coref, joint_model):
+               use_binary_feats, coreferability_type, entity_coref, use_paraphrase, joint_model):
     '''
     Runs the inference procedure for a specific model (event/entity model).
     :param clusters: a list of Cluster objects of the same type (event/entity)
@@ -1534,6 +1580,8 @@ def test_model(clusters, other_clusters, model, device, topic_docs, is_event, ep
     :param use_args_feats: whether to use the semantically-dependent mention vectors or to ablate
     them.
     :param use_binary_feats: whether to use the binary coreference features or to ablate them.
+    :param use_paraphrase: True if the mention representation need to contain also the paraphrases of the mention
+    False if not
     '''
 
     # updating the semantically - dependent vectors according to other_clusters
@@ -1546,10 +1594,10 @@ def test_model(clusters, other_clusters, model, device, topic_docs, is_event, ep
     # merging clusters pairs till reaching a pre-defined threshold
     merge(clusters, cluster_pairs, other_clusters,model, device, topic_docs, epoch,
           topics_counter, topics_num, threshold, is_event, use_args_feats,
-          use_binary_feats, coreferability_type, entity_coref, joint_model)
+          use_binary_feats, coreferability_type, entity_coref, use_paraphrase, joint_model)
 
 
-def test_models(test_set, cd_event_model,cd_entity_model, device,
+def test_models(test_set, cd_event_model, cd_entity_model, device,
                 config_dict, write_clusters, out_dir, doc_to_entity_mentions, analyze_scores):
     '''
     Runs the inference procedure for both event and entity models calculates the B-cubed
@@ -1587,13 +1635,13 @@ def test_models(test_set, cd_event_model,cd_entity_model, device,
     all_entity_mentions = []
 
     with torch.no_grad():
-        for topic_id in topics_keys:
+        for i, topic_id in enumerate(topics_keys):
             topic = topics[topic_id]
             topics_counter += 1
 
             logging.info('=========================================================================')
             logging.info('Topic {}:'.format(topic_id))
-            print('Topic {}:'.format(topic_id))
+            print('Topic {}:, {}/{}'.format(topic_id, i+1, len(topics_keys)))
 
             event_mentions, entity_mentions = topic_to_mention_list(topic,
                                                                     is_gold=config_dict["test_use_gold_mentions"])
@@ -1604,13 +1652,13 @@ def test_models(test_set, cd_event_model,cd_entity_model, device,
             # create span rep for both entity and event mentions
             create_mention_span_representations(event_mentions, cd_event_model, device,
                                                 topic.docs, is_event=True,
-                                                requires_grad=False)
+                                                requires_grad=False, use_paraphrase=config_dict["use_paraphrase"])
             create_mention_span_representations(entity_mentions, cd_entity_model, device,
                                                 topic.docs, is_event=False,
-                                                requires_grad=False)
+                                                requires_grad=False, use_paraphrase=config_dict["use_paraphrase"])
 
-            print('number of event mentions : {}'.format(len(event_mentions)))
-            print('number of entity mentions : {}'.format(len(entity_mentions)))
+            log('number of event mentions : {}'.format(len(event_mentions)))
+            log('number of entity mentions : {}'.format(len(entity_mentions)))
             logging.info('number of event mentions : {}'.format(len(event_mentions)))
             logging.info('number of entity mentions : {}'.format(len(entity_mentions)))
             topic.event_mentions = event_mentions
@@ -1636,11 +1684,11 @@ def test_models(test_set, cd_event_model,cd_entity_model, device,
             event_th = config_dict["event_merge_threshold"]
 
             for i in range(1,config_dict["merge_iters"]+1):
-                print('Iteration number {}'.format(i))
+                log('Iteration number {}'.format(i))
                 logging.info('Iteration number {}'.format(i))
 
                 # Merge entities
-                print('Merge entity clusters...')
+                log('Merge entity clusters...')
                 logging.info('Merge entity clusters...')
                 test_model(clusters=topic_entity_clusters, other_clusters=topic_event_clusters,
                            model=cd_entity_model, device=device, topic_docs=topic.docs,is_event=False,epoch=epoch,
@@ -1650,9 +1698,10 @@ def test_models(test_set, cd_event_model,cd_entity_model, device,
                            use_binary_feats=config_dict["use_binary_feats"],
                            coreferability_type=config_dict["coreferability"],
                            entity_coref=config_dict["entity_coref"],
+                           use_paraphrase=config_dict["use_paraphrase"],
                            joint_model=True if i == 1 or config_dict["joint_model"] else False)
                 # Merge events
-                print('Merge event clusters...')
+                log('Merge event clusters...')
                 logging.info('Merge event clusters...')
                 test_model(clusters=topic_event_clusters, other_clusters=topic_entity_clusters,
                            model=cd_event_model,device=device, topic_docs=topic.docs, is_event=True,epoch=epoch,
@@ -1662,6 +1711,7 @@ def test_models(test_set, cd_event_model,cd_entity_model, device,
                            use_binary_feats=config_dict["use_binary_feats"],
                            coreferability_type=config_dict["coreferability"],
                            entity_coref=config_dict["entity_coref"],
+                           use_paraphrase=config_dict["use_paraphrase"],
                            joint_model=True if i == 1 or config_dict["joint_model"] else False)
 
             set_coref_chain_to_mentions(topic_event_clusters, is_event=True,
@@ -1725,7 +1775,7 @@ def test_models(test_set, cd_event_model,cd_entity_model, device,
         return event_b3_f1, entity_b3_f1
 
     else:
-        print('Using predicted mentions, can not calculate CoNLL F1')
+        log('Using predicted mentions, can not calculate CoNLL F1')
         logging.info('Using predicted mentions, can not calculate CoNLL F1')
         return 0,0
 
@@ -1894,7 +1944,7 @@ def save_mention_representations(clusters, out_dir, is_event):
             mention_rep = mention_to_rep(mention)
             mention_to_rep_dict[(mention.mention_str, mention.gold_tag)] = mention_rep
 
-    print(len(mention_to_rep_dict))
+    log(len(mention_to_rep_dict))
     filename = 'event_mentions_to_rep_dict' if is_event else 'entity_mentions_to_rep_dict'
     with open(os.path.join(out_dir, filename), 'wb') as f:
         cPickle.dump(mention_to_rep_dict, f)

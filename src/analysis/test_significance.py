@@ -8,7 +8,7 @@
 import sys
 import numpy as np
 from scipy import stats
-
+from tqdm import tqdm 
 ### Normality Check
 # H0: data is normally distributed
 
@@ -75,7 +75,7 @@ def mcNemar(table):
 def rand_permutation(data_A, data_B, n, R):
     delta_orig = float(sum([ x - y for x, y in zip(data_A, data_B)]))/n
     r = 0
-    for x in range(0, R):
+    for x in tqdm(range(0, R)):
         temp_A = data_A
         temp_B = data_B
         samples = [np.random.randint(1, 3) for i in range(n)] #which samples to swap without repetitions

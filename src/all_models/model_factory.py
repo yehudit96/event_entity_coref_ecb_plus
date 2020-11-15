@@ -50,13 +50,20 @@ def create_model(config_dict, is_event):
     else:
         mention_rep_size = context_vector_size + word_embeds.shape[1] + config_dict["char_rep_size"]
 
+    if config_dict["use_paraphrase"] and is_event:
+        mention_rep_size += word_embeds.shape[1]
+    
     input_dim = mention_rep_size * 3
 
     if config_dict["use_binary_feats"]:
         input_dim += 4 * config_dict["feature_size"]
     
     if config_dict["coreferability"] != 'None' and (is_event or (not is_event and config_dict['entity_coref'])):
-        input_dim = input_dim + config_dict["attention_hidden_size"]#get_corefferabiliy_dim(config_dict["coreferability"])  # for the rule score feature
+        if config_dict["coreferability"] == 'attention':
+            input_dim = input_dim + config_dict["attention_hidden_size"]# for the rule score feature
+        else:
+            input_dim = input_dim + get_corefferabiliy_dim(config_dict["coreferability"])  # for the rule score feature
+
     print("input dim {}".format(input_dim))
     second_dim = int(input_dim / 2)
     third_dim = second_dim

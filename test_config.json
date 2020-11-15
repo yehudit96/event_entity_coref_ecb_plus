@@ -1,9 +1,9 @@
 {"test_path":"data/processed/cybulska_setup/full_swirl_ecb/test_data",
 
-  "cd_event_model_path": "models/cybulska_setup/cd_event_best_model",
-  "cd_entity_model_path": "models/cybulska_setup/cd_entity_best_model",
+  "cd_event_model_path": "models/train_vector_no_entity/cd_event_best_model",
+  "cd_entity_model_path": "models/train_vector_no_entity/cd_entity_best_model",
 
-  "gpu_num": 0,
+  "gpu_num": 2,
   "event_merge_threshold": 0.5,
   "entity_merge_threshold": 0.5,
   "use_elmo": true,
@@ -21,6 +21,13 @@
   "random_seed": 2048,
 
   "event_gold_file_path": "data/gold/cybulska_gold/CD_test_event_mention_based.key_conll",
-  "entity_gold_file_path": "data/gold/cybulska_gold/CD_test_entity_mention_based.key_conll"
+  "entity_gold_file_path": "data/gold/cybulska_gold/CD_test_entity_mention_based.key_conll",
+
+  "run_conell_scorer":false,
+
+  "coreferability": "linear",
+  "entity_coref": false,
+  "joint_model": true,
+  "use_paraphrase": false
 
 }
