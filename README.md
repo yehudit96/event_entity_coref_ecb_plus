@@ -2,9 +2,10 @@
 
 ## Introduction
 This code was used in the paper:
+<b>"Paraphrasing vs Coreferring: Two Sides of the Same Coin"<b/><br/>
+Yehudit Meged, Avi Caciularu, Vered Shwartz, Ido Dagan
 
-<b>"Revisiting Joint Modeling of Cross-document Entity and Event Coreference Resolution"</b><br/>
-Shany Barhom, Vered Shwartz, Alon Eirew, Michael Bugert, Nils Reimers and Ido Dagan. ACL 2019.
+and based on the code of the paper: "Revisiting Joint Modeling of Cross-document Entity and Event Coreference Resolution"<br/>
 
 A neural model implemented in PyTorch for resolving cross-document entity and event coreference.
 The model was trained and evaluated on the ECB+ corpus.
