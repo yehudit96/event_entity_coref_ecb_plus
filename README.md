@@ -1,13 +1,15 @@
+
 # Revisiting Joint Modeling of Cross-document Entity and Event Coreference Resolution
 
 ## Introduction
 This code was used in the paper:
-<b>"Paraphrasing vs Coreferring: Two Sides of the Same Coin"<b/><br/>
+<b>"Paraphrasing vs Coreferring: Two Sides of the Same Coin"<b/> [link](https://arxiv.org/abs/2004.14979)
 Yehudit Meged, Avi Caciularu, Vered Shwartz, Ido Dagan
 
-and based on the code of the paper: "Revisiting Joint Modeling of Cross-document Entity and Event Coreference Resolution"<br/>
+and based on the code of the paper: "Revisiting Joint Modeling of Cross-document Entity and Event Coreference Resolution"
 
-A neural model implemented in PyTorch for resolving cross-document entity and event coreference.
+A neural model implemented in PyTorch for resolving cross-document entity and event coreference using paraphrasing knowladge.
+
 The model was trained and evaluated on the ECB+ corpus.
 
 ## Prerequisites
@@ -113,4 +115,4 @@ Note - the script's configuration file also requires:
 
 
 ## Contact info
-Contact [Shany Barhom](https://github.com/shanybar) at *shanyb21@gmail.com* for questions about this repository.
+Contact [Yehudit Meged](https://github.com/yehudit96) at *yehuditmeged@gmail.com* for questions about this repository.
